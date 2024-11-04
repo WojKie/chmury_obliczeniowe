@@ -1,116 +1,75 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from .forms import ProductForm, OrderForm, SupplierForm, DeliveryForm, InvoiceForm
+from rest_framework import viewsets
+from rest_framework.response import Response
+from rest_framework.decorators import action
+from django.db.models import F
 from .models import Product, Order, Supplier, Delivery, Invoice
+from .serializers import (
+    ProductSerializer, OrderSerializer, SupplierSerializer,
+    DeliverySerializer, InvoiceSerializer
+)
 
-# Create your views here.
-# Wyświetla listę produktów
-def product_list(request):
-    products = Product.objects.all()
-    return render(request, 'product_list.html', {'products': products})
+class ProductViewSet(viewsets.ModelViewSet):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
 
-# Dodaje nowy produkt
-def product_create(request):
-    if request.method == 'POST':
-        form = ProductForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('product_list')
-    else:
-        form = ProductForm()
-    return render(request, 'product_form.html', {'form': form})
+    @action(detail=True, methods=['post'])
+    def adjust_stock(self, request, pk=None):
+        product = self.get_object()
+        quantity = int(request.data.get('quantity', 0))
+        
+        product.quantity = F('quantity') + quantity
+        product.save()
+        product.refresh_from_db()
+        
+        return Response({
+            'message': f'Stock adjusted by {quantity}',
+            'new_quantity': product.quantity
+        })
 
-# Usuwa istniejący produkt
-def product_delete(request, pk):
-    product = get_object_or_404(Product, pk=pk)
-    if request.method == 'POST':
-        product.delete()
-        return redirect('product_list')
-    return render(request, 'product_confirm_delete.html', {'product': product})
+class OrderViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
 
-# Widoki dla zamówień
-def order_list(request):
-    orders = Order.objects.all()
-    return render(request, 'order_list.html', {'orders': orders})
+    @action(detail=True, methods=['post'])
+    def update_status(self, request, pk=None):
+        order = self.get_object()
+        status = request.data.get('status')
+        
+        if status in dict(Order.STATUS_CHOICES):
+            order.status = status
+            order.save()
+            return Response({'message': f'Order status updated to {status}'})
+        return Response({'error': 'Invalid status'}, status=400)
 
-def order_create(request):
-    if request.method == 'POST':
-        form = OrderForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('order_list')
-    else:
-        form = OrderForm()
-    return render(request, 'order_form.html', {'form': form})
+class SupplierViewSet(viewsets.ModelViewSet):
+    queryset = Supplier.objects.all()
+    serializer_class = SupplierSerializer
 
-def order_delete(request, pk):
-    order = get_object_or_404(Order, pk=pk)
-    if request.method == 'POST':
-        order.delete()
-        return redirect('order_list')
-    return render(request, 'order_confirm_delete.html', {'order': order})
+class DeliveryViewSet(viewsets.ModelViewSet):
+    queryset = Delivery.objects.all()
+    serializer_class = DeliverySerializer
 
-# Widoki dla dostawców
-def supplier_list(request):
-    suppliers = Supplier.objects.all()
-    return render(request, 'supplier_list.html', {'suppliers': suppliers})
+    @action(detail=True, methods=['post'])
+    def process_delivery(self, request, pk=None):
+        delivery = self.get_object()
+        
+        for delivery_product in delivery.deliveryproduct_set.all():
+            product = delivery_product.product
+            product.quantity = F('quantity') + delivery_product.quantity
+            product.save()
+        
+        delivery.status = 'COMPLETED'
+        delivery.save()
+        
+        return Response({'message': 'Delivery processed successfully'})
 
-def supplier_create(request):
-    if request.method == 'POST':
-        form = SupplierForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('supplier_list')
-    else:
-        form = SupplierForm()
-    return render(request, 'supplier_form.html', {'form': form})
+class InvoiceViewSet(viewsets.ModelViewSet):
+    queryset = Invoice.objects.all()
+    serializer_class = InvoiceSerializer
 
-def supplier_delete(request, pk):
-    supplier = get_object_or_404(Supplier, pk=pk)
-    if request.method == 'POST':
-        supplier.delete()
-        return redirect('supplier_list')
-    return render(request, 'supplier_confirm_delete.html', {'supplier': supplier})
-
-# Widoki dla dostaw
-def delivery_list(request):
-    deliveries = Delivery.objects.all()
-    return render(request, 'delivery_list.html', {'deliveries': deliveries})
-
-def delivery_create(request):
-    if request.method == 'POST':
-        form = DeliveryForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('delivery_list')
-    else:
-        form = DeliveryForm()
-    return render(request, 'delivery_form.html', {'form': form})
-
-def delivery_delete(request, pk):
-    delivery = get_object_or_404(Delivery, pk=pk)
-    if request.method == 'POST':
-        delivery.delete()
-        return redirect('delivery_list')
-    return render(request, 'delivery_confirm_delete.html', {'delivery': delivery})
-
-# Widoki dla faktur
-def invoice_list(request):
-    invoices = Invoice.objects.all()
-    return render(request, 'invoice_list.html', {'invoices': invoices})
-
-def invoice_create(request):
-    if request.method == 'POST':
-        form = InvoiceForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('invoice_list')
-    else:
-        form = InvoiceForm()
-    return render(request, 'invoice_form.html', {'form': form})
-
-def invoice_delete(request, pk):
-    invoice = get_object_or_404(Invoice, pk=pk)
-    if request.method == 'POST':
-        invoice.delete()
-        return redirect('invoice_list')
-    return render(request, 'invoice_confirm_delete.html', {'invoice': invoice})
+    @action(detail=True, methods=['post'])
+    def mark_as_paid(self, request, pk=None):
+        invoice = self.get_object()
+        invoice.paid = True
+        invoice.save()
+        return Response({'message': 'Invoice marked as paid'})
