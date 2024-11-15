@@ -2,10 +2,14 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.db.models import F
-from .models import Product, Order, Supplier, Delivery, Invoice
+from .models import Product, Order, Supplier, Delivery, DeliveryProduct, OrderProduct
 from .serializers import (
-    ProductSerializer, OrderSerializer, SupplierSerializer,
-    DeliverySerializer, InvoiceSerializer
+    ProductSerializer, 
+    OrderSerializer, 
+    SupplierSerializer, 
+    DeliverySerializer,
+    DeliveryProductSerializer,
+    OrderProductSerializer
 )
 
 class ProductViewSet(viewsets.ModelViewSet):
@@ -51,25 +55,50 @@ class DeliveryViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def process_delivery(self, request, pk=None):
-        delivery = self.get_object()
-        
-        for delivery_product in delivery.deliveryproduct_set.all():
-            product = delivery_product.product
-            product.quantity = F('quantity') + delivery_product.quantity
-            product.save()
-        
-        delivery.status = 'COMPLETED'
-        delivery.save()
-        
-        return Response({'message': 'Delivery processed successfully'})
+        try:
+            delivery = self.get_object()
+            
+            if delivery.status == 'COMPLETED':
+                return Response(
+                    {'error': 'Delivery already processed'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-class InvoiceViewSet(viewsets.ModelViewSet):
-    queryset = Invoice.objects.all()
-    serializer_class = InvoiceSerializer
+            for delivery_product in delivery.deliveryproduct_set.all():
+                product = delivery_product.product
+                product.quantity = F('quantity') + delivery_product.quantity
+                product.save()
+            
+            delivery.status = 'COMPLETED'
+            delivery.save()
+            
+            return Response(
+                {'message': 'Delivery processed successfully'},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-    @action(detail=True, methods=['post'])
-    def mark_as_paid(self, request, pk=None):
-        invoice = self.get_object()
-        invoice.paid = True
-        invoice.save()
-        return Response({'message': 'Invoice marked as paid'})
+class DeliveryProductViewSet(viewsets.ModelViewSet):
+    queryset = DeliveryProduct.objects.all()
+    serializer_class = DeliveryProductSerializer
+
+    def perform_create(self, serializer):
+        """Validate delivery status before creating delivery product"""
+        delivery_product = serializer.save()
+        if delivery_product.delivery.status == 'COMPLETED':
+            raise ValidationError({'error': 'Cannot modify completed delivery'})
+
+
+class OrderProductViewSet(viewsets.ModelViewSet):
+    queryset = OrderProduct.objects.all()
+    serializer_class = OrderProductSerializer
+
+    def perform_create(self, serializer):
+        """Validate order status before creating order product"""
+        order_product = serializer.save()
+        if order_product.order.status != 'PENDING':
+            raise ValidationError({'error': 'Can only add products to pending orders'})

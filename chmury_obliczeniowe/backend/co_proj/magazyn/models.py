@@ -75,15 +75,3 @@ class DeliveryProduct(models.Model):
     def __str__(self):
         return f"{self.product.name} x {self.quantity} in Delivery #{self.delivery.id}"
 
-
-class Invoice(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    invoice_number = models.CharField(max_length=50, unique=True)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    created_at = models.DateTimeField(auto_now_add=True)
-    due_date = models.DateField()
-    paid = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f"Invoice #{self.invoice_number} for Order #{self.order.id}"
-

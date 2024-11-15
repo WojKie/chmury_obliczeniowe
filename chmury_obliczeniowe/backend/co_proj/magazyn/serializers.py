@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Product, Order, Supplier, Delivery, Invoice, OrderProduct, DeliveryProduct
+from .models import Product, Order, Supplier, Delivery, OrderProduct, DeliveryProduct
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -39,10 +39,3 @@ class DeliverySerializer(serializers.ModelSerializer):
     class Meta:
         model = Delivery
         fields = ['id', 'supplier', 'supplier_name', 'delivery_date', 'status', 'delivery_products', 'created_at']
-
-class InvoiceSerializer(serializers.ModelSerializer):
-    order_number = serializers.IntegerField(source='order.id', read_only=True)
-
-    class Meta:
-        model = Invoice
-        fields = ['id', 'invoice_number', 'order', 'order_number', 'amount', 'created_at', 'due_date', 'paid']
