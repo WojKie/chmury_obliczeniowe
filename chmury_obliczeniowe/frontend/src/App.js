@@ -45,8 +45,9 @@ function App() {
 function Home() {
     return (
         <div>
-            <h1>Warehouse Management System</h1>
-            <p>Welcome to the warehouse management system. Please select an option from the navigation menu.</p>
+            <h1>System zarządzania magazynem</h1>
+            <p>Witamy w systemie zarządzania magazynem. Proszę wybrać opcję w menu nawigacyjnym.</p>
+            <p>Jeśli chcesz dokonać zmian w magazynie musisz to zrobić w panelu administratora.</p>
         </div>
     );
 }

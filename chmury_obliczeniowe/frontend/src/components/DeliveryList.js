@@ -3,6 +3,9 @@ import api from '../services/api';
 
 function DeliveryList() {
     const [deliveries, setDeliveries] = useState([]);
+    const [sortedDeliveries, setSortedDeliveries] = useState([]);
+    const [sortField, setSortField] = useState(null);
+    const [sortDirection, setSortDirection] = useState('asc');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -12,6 +15,7 @@ function DeliveryList() {
                 setLoading(true);
                 const response = await api.get('/deliveries/');
                 setDeliveries(response.data);
+                setSortedDeliveries(response.data);
                 setError(null);
             } catch (err) {
                 console.error('Error:', err);
@@ -24,18 +28,57 @@ function DeliveryList() {
         fetchDeliveries();
     }, []);
 
+    useEffect(() => {
+        if (sortField) {
+            const sorted = [...deliveries].sort((a, b) => {
+                if (sortDirection === 'asc') {
+                    return a[sortField] > b[sortField] ? 1 : -1;
+                }
+                return a[sortField] < b[sortField] ? 1 : -1;
+            });
+            setSortedDeliveries(sorted);
+        } else {
+            setSortedDeliveries(deliveries);
+        }
+    }, [deliveries, sortField, sortDirection]);
+
+    const handleSort = (field) => {
+        if (sortField === field) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortDirection('asc');
+        }
+    };
+
+    const handleReset = () => {
+        setSortField(null);
+        setSortDirection('asc');
+        setSortedDeliveries(deliveries);
+    };
+
     if (loading) return <div>Loading...</div>;
     if (error) return <div>Error: {error}</div>;
 
     return (
         <div>
             <h2>Deliveries</h2>
-            <table style={{ 
-                width: '100%', 
-                borderCollapse: 'collapse',
-                marginTop: '1rem',
-                border: '1px solid #ddd'
-            }}>
+            <div style={{ marginBottom: '1rem' }}>
+                <button onClick={() => handleSort('id')}>
+                    Sort by ID {sortField === 'id' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </button>
+                <button onClick={() => handleSort('supplier')}>
+                    Sort by Supplier {sortField === 'supplier' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </button>
+                <button onClick={() => handleSort('delivery_date')}>
+                    Sort by Date {sortField === 'delivery_date' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </button>
+                <button onClick={() => handleSort('status')}>
+                    Sort by Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </button>
+                <button onClick={handleReset}>Reset</button>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem', border: '1px solid #ddd' }}>
                 <thead>
                     <tr style={{ backgroundColor: '#f8f9fa' }}>
                         <th style={tableHeaderStyle}>ID</th>
@@ -45,7 +88,7 @@ function DeliveryList() {
                     </tr>
                 </thead>
                 <tbody>
-                    {deliveries.map(delivery => (
+                    {sortedDeliveries.map(delivery => (
                         <tr key={delivery.id} style={tableRowStyle}>
                             <td style={tableCellStyle}>{delivery.id}</td>
                             <td style={tableCellStyle}>{delivery.supplier?.name || 'N/A'}</td>
@@ -64,10 +107,10 @@ function DeliveryList() {
     );
 }
 
-// Style dla tabeli
 const tableHeaderStyle = {
     padding: '12px',
     borderBottom: '2px solid #ddd',
+    backgroundColor: '#f8f9fa',
     textAlign: 'left'
 };
 

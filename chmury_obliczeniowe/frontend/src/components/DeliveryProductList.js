@@ -3,6 +3,9 @@ import api from '../services/api';
 
 const DeliveryProductList = () => {
     const [deliveryProducts, setDeliveryProducts] = useState([]);
+    const [sortedDeliveryProducts, setSortedDeliveryProducts] = useState([]);
+    const [sortField, setSortField] = useState(null);
+    const [sortDirection, setSortDirection] = useState('asc');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -12,6 +15,7 @@ const DeliveryProductList = () => {
                 setLoading(true);
                 const response = await api.get('/delivery-products/');
                 setDeliveryProducts(response.data);
+                setSortedDeliveryProducts(response.data);
                 setError(null);
             } catch (err) {
                 console.error('Error:', err);
@@ -24,12 +28,56 @@ const DeliveryProductList = () => {
         fetchDeliveryProducts();
     }, []);
 
+    useEffect(() => {
+        if (sortField) {
+            const sorted = [...deliveryProducts].sort((a, b) => {
+                if (sortDirection === 'asc') {
+                    return a[sortField] > b[sortField] ? 1 : -1;
+                }
+                return a[sortField] < b[sortField] ? 1 : -1;
+            });
+            setSortedDeliveryProducts(sorted);
+        } else {
+            setSortedDeliveryProducts(deliveryProducts);
+        }
+    }, [deliveryProducts, sortField, sortDirection]);
+
+    const handleSort = (field) => {
+        if (sortField === field) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortDirection('asc');
+        }
+    };
+
+    const handleReset = () => {
+        setSortField(null);
+        setSortDirection('asc');
+        setSortedDeliveryProducts(deliveryProducts);
+    };
+
     if (loading) return <div>Loading...</div>;
     if (error) return <div>Error: {error}</div>;
 
     return (
         <div>
             <h2>Delivery Products</h2>
+            <div style={{ marginBottom: '1rem' }}>
+                <button onClick={() => handleSort('delivery_id')}>
+                    Sort by Delivery ID {sortField === 'delivery_id' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </button>
+                <button onClick={() => handleSort('supplier_name')}>
+                    Sort by Supplier {sortField === 'supplier_name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </button>
+                <button onClick={() => handleSort('product_name')}>
+                    Sort by Product {sortField === 'product_name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </button>
+                <button onClick={() => handleSort('quantity')}>
+                    Sort by Quantity {sortField === 'quantity' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </button>
+                <button onClick={handleReset}>Reset</button>
+            </div>
             <table style={tableStyle}>
                 <thead>
                     <tr>
@@ -41,14 +89,17 @@ const DeliveryProductList = () => {
                     </tr>
                 </thead>
                 <tbody>
-                    {deliveryProducts.map((item, index) => (
+                    {sortedDeliveryProducts.map((item, index) => (
                         <tr key={`${item.delivery_id}-${index}`} style={tableRowStyle}>
                             <td style={tableCellStyle}>{item.delivery_id}</td>
                             <td style={tableCellStyle}>{item.supplier_name}</td>
                             <td style={tableCellStyle}>{item.product_name}</td>
                             <td style={tableCellStyle}>{item.quantity}</td>
                             <td style={tableCellStyle}>
-                                {new Date(item.delivery_date).toLocaleDateString()}
+                                {item.delivery_date ? 
+                                    new Date(item.delivery_date).toLocaleDateString() : 
+                                    'N/A'
+                                }
                             </td>
                         </tr>
                     ))}
