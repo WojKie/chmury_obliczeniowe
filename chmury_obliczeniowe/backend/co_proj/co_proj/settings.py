@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-g(nu#_xnm!1o_q=&35&xy92jenwiw)%msx++735l&@&#%pn+n+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -99,10 +99,14 @@ DATABASES = {
         'NAME': 'co_proj',
         'USER': 'postgres',
         'PASSWORD': '123',
-        'HOST': 'localhost',
+        'HOST': 'db',
         'PORT': '5432',
     }
 }
+
+ALLOWED_HOSTS = ['*']
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
 
 
 # Password validation
