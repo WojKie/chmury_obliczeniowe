@@ -31,6 +31,7 @@ class Supplier(models.Model):
         return self.name
 
 class Order(models.Model):
+    # Predefiniowane wybory
     STATUS_CHOICES = [
         ('PENDING', 'Pending'),
         ('PROCESSING', 'Processing'),
@@ -40,8 +41,9 @@ class Order(models.Model):
 
     date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    # Prawidłowa dekompozycja relacji wiele-do-wielu
     products = models.ManyToManyField(Product, through='OrderProduct')
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0) # Zależy tylko od id zamówienia
 
     def __str__(self):
         return f"Order #{self.id} ({self.status})"
@@ -57,6 +59,11 @@ class OrderProduct(models.Model):
     
 
 class Delivery(models.Model):
+    # Relacja z dostawcą
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('COMPLETED', 'Completed'),
+    ]
     supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE)
     products = models.ManyToManyField(Product, through='DeliveryProduct')
     delivery_date = models.DateTimeField()
@@ -70,6 +77,7 @@ class Delivery(models.Model):
 class DeliveryProduct(models.Model):
     delivery = models.ForeignKey(Delivery, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    # Spójne definiowanie pól ilościowych
     quantity = models.IntegerField(validators=[MinValueValidator(1)])
 
     def __str__(self):
